@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json.schemastore.org/nest-cli",
+  "collection": "@nestjs/schematics",
+  "sourceRoot": "apps/selenium-lab/src",
+  "compilerOptions": {
+    "deleteOutDir": true,
+    "webpack": true,
+    "tsConfigPath": "apps/selenium-lab/tsconfig.app.json"
+  },
+  "monorepo": true,
+  "root": "apps/selenium-lab",
+  "projects": {
+    "selenium-lab": {
+      "type": "application",
+      "root": "apps/selenium-lab",
+      "entryFile": "main",
+      "sourceRoot": "apps/selenium-lab/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/selenium-lab/tsconfig.app.json"
+      }
+    },
+    "api-gateway": {
+      "type": "application",
+      "root": "apps/api-gateway",
+      "entryFile": "main",
+      "sourceRoot": "apps/api-gateway/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/api-gateway/tsconfig.app.json"
+      }
+    },
+    "selenium-server": {
+      "type": "application",
+      "root": "apps/selenium-server",
+      "entryFile": "main",
+      "sourceRoot": "apps/selenium-server/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/selenium-server/tsconfig.app.json"
+      }
+    }
+  }
+}
