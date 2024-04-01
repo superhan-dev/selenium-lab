@@ -16,13 +16,13 @@
         "tsConfigPath": "apps/main/tsconfig.app.json"
       }
     },
-    "selenium-server": {
+    "selenium-automation": {
       "type": "application",
-      "root": "apps/selenium-server",
+      "root": "apps/selenium-automation",
       "entryFile": "main",
-      "sourceRoot": "apps/selenium-server/src",
+      "sourceRoot": "apps/selenium-automation/src",
       "compilerOptions": {
-        "tsConfigPath": "apps/selenium-server/tsconfig.app.json"
+        "tsConfigPath": "apps/selenium-automation/tsconfig.app.json"
       }
     }
   }

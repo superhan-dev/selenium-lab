@@ -1,14 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
-import { SeleniumServerModule } from '../src/selenium-server.module';
+import { SeleniumAutomationModule } from '../src/selenium-automation.module';
 
-describe('SeleniumServerController (e2e)', () => {
+describe('SeleniumAutomationController (e2e)', () => {
   let app: INestApplication;
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [SeleniumServerModule],
+      imports: [SeleniumAutomationModule],
     }).compile();
 
     app = moduleFixture.createNestApplication();
