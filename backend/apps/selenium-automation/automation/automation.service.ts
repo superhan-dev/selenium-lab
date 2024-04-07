@@ -3,10 +3,185 @@ import { ExecuteDeferDto } from './dto/execute-defer.dto';
 import { WebDriver, By, until } from 'selenium-webdriver';
 import { SeleniumService } from '../common/selenium/selenium.service';
 import { addNWeeks } from '../common/helpers/date.helpers';
+import { ConfigService } from '@nestjs/config';
+import { writeFileSync } from 'fs';
+import { cropImage } from '../common/helpers/sharp.helpers';
+import { TakeWhatsOnScreenShotDto } from './dto/take-whats-on-screen-shot.dto';
+import { SearchWhatsOnActivityDto } from './dto/search-whats-on-activity.dto';
 
 @Injectable()
 export class AutomationService {
-  constructor(private readonly seleniumService: SeleniumService) {}
+  constructor(
+    private readonly seleniumService: SeleniumService,
+    private readonly configService: ConfigService,
+  ) {}
+
+  async takeWhatsOnScreenShot(dto: TakeWhatsOnScreenShotDto): Promise<any> {
+    const driver: WebDriver = await this.seleniumService.getDriver();
+
+    for (const url of dto.urls) {
+      driver.get(url);
+      await driver.manage().window().maximize();
+      await this.seleniumService.zoom(driver, 0.6); // Example zoom factor: 0.8 (20% decrease)
+
+      const screenshot = await driver.takeScreenshot();
+
+      // Convert the screenshot to a JPG format
+      const base64Data = screenshot.replace(/^data:image\/png;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+
+      // Crop the screenshot to the bounding box of the element
+      const croppedBuffer = await this.whatsOnCropImage(buffer);
+
+      // Save the JPG file to your desired location
+      writeFileSync(
+        '/home/shhan/Workspace/superhan/selenium-lab/frontend/my-app/public/screenshot.jpg',
+        croppedBuffer,
+      );
+    }
+
+    // where this file will send?
+
+    return 'Create a Image Successfully.';
+  }
+
+  private generateSearchUrl(
+    fromDate: string,
+    toDate: string,
+    pageNum: string,
+  ): string {
+    const whatsOnUrl = this.configService.get<string>('WHATS_ON_URL');
+    return `${whatsOnUrl}search/free+from-${fromDate}-+to-${toDate}+melbourne/page-${pageNum}`;
+  }
+
+  private async getPages(driver: WebDriver, arr: string[]): Promise<string[]> {
+    // Find the span elements with the class name "page"
+    const pageElements = await driver.findElements(By.css('span.page'));
+
+    for (const pe of pageElements) {
+      const pageNum: string = (await pe.getText()).trim();
+      arr.push(pageNum);
+    }
+
+    return arr;
+  }
+
+  private async getTitleElements(
+    driver: WebDriver,
+    arr: string[],
+  ): Promise<string[]> {
+    // 1.1 get all title per a page.
+    const titleElements = await driver.findElements(By.css('h2.title'));
+    for (const te of titleElements) {
+      const title = (await te.getText()).trim();
+      arr.push(title);
+    }
+
+    return arr;
+  }
+
+  private async getTimetableElements(
+    driver: WebDriver,
+    arr: string[],
+  ): Promise<string[]> {
+    // 1.1 get all title per a page.
+    const timeTableElements = await driver.findElements(
+      By.css('#date-times-table tbody'),
+    );
+
+    for (const tbody of timeTableElements) {
+      console.log(tbody);
+    }
+    return arr;
+  }
+
+  /**
+   *
+   * @param fromDate yyyy-MM-dd
+   * @param toDate yyyy-MM-dd
+   */
+  async searchWhatsOnActivity(dto: SearchWhatsOnActivityDto) {
+    const firstPageNum = '1';
+    const initSearchUrl: string = this.generateSearchUrl(
+      dto.fromDate,
+      dto.toDate,
+      firstPageNum,
+    );
+    const driver: WebDriver = await this.seleniumService.getDriver();
+    await driver.get(initSearchUrl);
+
+    await driver.wait(until.titleIs("Search results - What's On"), 1000);
+
+    // // Find the span elements with the class name "page"
+    const pages = await this.getPages(driver, []);
+    let titles = [];
+    // Output the text content of each page element
+
+    for (const page of pages) {
+      console.log(page);
+      if (page === firstPageNum) {
+        // await this.getTitleElements(driver, contentTitles);
+      } else {
+        console.log(page);
+        // 1. generate search url with page number
+        const searchUrls: string = this.generateSearchUrl(
+          dto.fromDate,
+          dto.toDate,
+          page,
+        );
+
+        await driver.get(searchUrls);
+        titles = [...titles, await this.getTitleElements(driver, [])];
+      }
+    }
+
+    const whatsOnUrl = this.configService.get<string>('WHATS_ON_URL');
+    for (const title of titles) {
+      const thingsToDoUrl = `${whatsOnUrl}/things-to-do/${title}`;
+      await driver.get(thingsToDoUrl);
+    }
+    // 1.2 get a content from app
+    // click a content an get the time table
+    // 2. map the event with a date
+    // 3. make url of the events and screen shot.
+
+    try {
+    } finally {
+      // 브라우저 세션을 종료합니다.
+      // await driver.quit();
+    }
+  }
+
+  async testGetTimeTable() {
+    const driver: WebDriver = this.seleniumService.getDriver();
+    const url = 'https://whatson.melbourne.vic.gov.au/things-to-do/rising';
+    await driver.get(url);
+
+    const dates = await driver.findElements(
+      By.css('#date-times-table tbody tr th'),
+    );
+
+    const arr = [];
+
+    for (let i = 0; i < dates.length; i++) {
+      const date = (await dates[i].getText()).trim();
+      if (date !== '') {
+        arr[i] = { ...arr[i], date: date };
+      }
+    }
+
+    const times = await driver.findElements(
+      By.css('#date-times-table tbody tr td ul li span[aria-hidden="true"]'),
+    );
+
+    for (let i = 0; i < times.length; i++) {
+      const time = (await times[i].getText()).trim();
+      if (time !== '') {
+        arr[i] = { ...arr[i], time: time };
+      }
+    }
+    console.log(arr);
+  }
 
   async executeDefer(executeDeferDto: ExecuteDeferDto): Promise<any> {
     const driver: WebDriver = await this.seleniumService.getDriver();
@@ -14,6 +189,8 @@ export class AutomationService {
     try {
       // TODO: need to move this in configuration variable
       // 웹사이트로 이동합니다.
+      this.configService.get<string>('SELENIUM_WEB_URL');
+
       await driver.get('https://elsis.rtomanager.com.au/');
 
       // 페이지가 로드될 때까지 기다립니다.
@@ -178,5 +355,16 @@ export class AutomationService {
     }
 
     return 'OK';
+  }
+
+  // Function to crop an image to a specified rectangle
+  private async whatsOnCropImage(imageBuffer) {
+    const rect = {
+      left: 610,
+      top: 150,
+      width: 610,
+      height: 660,
+    };
+    return await cropImage(imageBuffer, rect);
   }
 }

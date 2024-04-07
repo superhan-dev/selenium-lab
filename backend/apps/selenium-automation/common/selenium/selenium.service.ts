@@ -17,4 +17,8 @@ export class SeleniumService implements OnApplicationShutdown {
   getDriver(): WebDriver {
     return this.driver;
   }
+
+  async zoom(driver: WebDriver, zoomFactor: number): Promise<void> {
+    await driver.executeScript(`document.body.style.zoom = '${zoomFactor}'`);
+  }
 }

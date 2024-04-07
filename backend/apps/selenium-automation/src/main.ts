@@ -3,9 +3,11 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { SeleniumAutomationModule } from './selenium-automation.module';
 import helmet from 'helmet';
 import { ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
   const app = await NestFactory.create(SeleniumAutomationModule);
+  const configService = app.get(ConfigService);
 
   app.use(
     helmet({
@@ -39,8 +41,8 @@ async function bootstrap() {
 
   app.enableShutdownHooks();
 
-  const port: number = 14001;
-  await app.listen(14001);
+  const port: number = configService.get<number>('PORT');
+  await app.listen(port);
   console.log(`The selenium-automation start with port ${port}`);
 }
 bootstrap();
