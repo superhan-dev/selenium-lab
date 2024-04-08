@@ -3,6 +3,7 @@ import { AutomationService } from './automation.service';
 import { AutomationController } from './automation.controller';
 import { SeleniumModule } from '../common/selenium/selenium.module';
 import { ConfigModule } from '@nestjs/config';
+import { EmailSenderModule } from '../email-sender/email-sender.module';
 
 @Module({
   imports: [
@@ -11,6 +12,7 @@ import { ConfigModule } from '@nestjs/config';
       isGlobal: true,
       envFilePath: './apps/selenium-automation/.env',
     }),
+    EmailSenderModule,
   ],
   controllers: [AutomationController],
   providers: [AutomationService],

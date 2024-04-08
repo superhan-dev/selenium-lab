@@ -1,4 +1,4 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Post, Body, Get } from '@nestjs/common';
 import { AutomationService } from './automation.service';
 import { ExecuteDeferDto } from './dto/execute-defer.dto';
 import { ConfigService } from '@nestjs/config';
@@ -32,5 +32,10 @@ export class AutomationController {
   ): Promise<any> {
     console.log('hello', dto);
     return await this.automationService.testGetTimeTable();
+  }
+
+  @Get('email-test')
+  async emailTest() {
+    return await this.automationService.sendEmail();
   }
 }

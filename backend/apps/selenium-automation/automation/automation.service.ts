@@ -8,13 +8,20 @@ import { writeFileSync } from 'fs';
 import { cropImage } from '../common/helpers/sharp.helpers';
 import { TakeWhatsOnScreenShotDto } from './dto/take-whats-on-screen-shot.dto';
 import { SearchWhatsOnActivityDto } from './dto/search-whats-on-activity.dto';
+import { EmailSenderService } from '../email-sender/email-sender.service';
+import { SendEmailDto } from '../email-sender/dto/send-email.dto';
 
 @Injectable()
 export class AutomationService {
   constructor(
     private readonly seleniumService: SeleniumService,
     private readonly configService: ConfigService,
+    private readonly emailSenderService: EmailSenderService,
   ) {}
+
+  async sendEmail(dto: SendEmailDto) {
+    return await this.emailSenderService.sendEmail(dto);
+  }
 
   async takeWhatsOnScreenShot(dto: TakeWhatsOnScreenShotDto): Promise<any> {
     const driver: WebDriver = await this.seleniumService.getDriver();
