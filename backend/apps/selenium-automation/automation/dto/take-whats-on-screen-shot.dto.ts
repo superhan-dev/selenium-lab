@@ -1,7 +1,9 @@
+import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { ArrayNotEmpty, IsArray, Matches } from 'class-validator';
+import { RtomLoginDto } from './rtom-login.dto';
 
-export class TakeWhatsOnScreenShotDto {
+export class TakeWhatsOnScreenShotDto extends RtomLoginDto {
   @IsArray()
   @ArrayNotEmpty()
   @Type(() => String)
@@ -13,5 +15,6 @@ export class TakeWhatsOnScreenShotDto {
     each: true,
     message: 'The URL is wrong',
   })
+  @ApiProperty()
   urls: string[];
 }

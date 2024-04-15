@@ -1,9 +1,16 @@
-import { Controller, Post, Body, Get } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  BadRequestException,
+} from '@nestjs/common';
 import { AutomationService } from './automation.service';
 import { ExecuteDeferDto } from './dto/execute-defer.dto';
 import { ConfigService } from '@nestjs/config';
 import { TakeWhatsOnScreenShotDto } from './dto/take-whats-on-screen-shot.dto';
 import { SearchWhatsOnActivityDto } from './dto/search-whats-on-activity.dto';
+import { ChangeProfileDto } from './dto/change-profile.dto';
 
 @Controller('automation')
 export class AutomationController {
@@ -34,8 +41,21 @@ export class AutomationController {
     return await this.automationService.testGetTimeTable();
   }
 
+  @Post()
+  async changeProfile(@Body() changeProfileDto: ChangeProfileDto) {
+    return await this.automationService.changeProfile(changeProfileDto);
+  }
+
   @Get('email-test')
   async emailTest() {
-    return await this.automationService.sendEmail();
+    // return await this.automationService.sendEmail();
+  }
+
+  @Get('exception-test')
+  async exceptionTest() {
+    throw new BadRequestException('Something bad happened', {
+      // cause: new Error(),
+      description: 'Some error description',
+    });
   }
 }

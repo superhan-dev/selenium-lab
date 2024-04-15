@@ -10,6 +10,8 @@ import { TakeWhatsOnScreenShotDto } from './dto/take-whats-on-screen-shot.dto';
 import { SearchWhatsOnActivityDto } from './dto/search-whats-on-activity.dto';
 import { EmailSenderService } from '../email-sender/email-sender.service';
 import { SendEmailDto } from '../email-sender/dto/send-email.dto';
+import { RtomLoginDto } from './dto/rtom-login.dto';
+import { ChangeProfileDto } from './dto/change-profile.dto';
 
 @Injectable()
 export class AutomationService {
@@ -26,11 +28,21 @@ export class AutomationService {
   async takeWhatsOnScreenShot(dto: TakeWhatsOnScreenShotDto): Promise<any> {
     const driver: WebDriver = await this.seleniumService.getDriver();
 
-    for (const url of dto.urls) {
-      driver.get(url);
+    for (let i = 0; i < dto.urls.length; i++) {
+      const urlTemp = dto.urls[i].split('/');
+      const title = urlTemp[urlTemp.length - 1];
+
+      driver.get(dto.urls[i]);
       await driver.manage().window().maximize();
       await this.seleniumService.zoom(driver, 0.6); // Example zoom factor: 0.8 (20% decrease)
 
+      const mapButton = await driver.findElements(
+        By.css('button.gm-control-active gm-fullscreen-control'),
+      );
+
+      while (!mapButton) {
+        console.log('waiting loading a the google map');
+      }
       const screenshot = await driver.takeScreenshot();
 
       // Convert the screenshot to a JPG format
@@ -42,7 +54,7 @@ export class AutomationService {
 
       // Save the JPG file to your desired location
       writeFileSync(
-        '/home/shhan/Workspace/superhan/selenium-lab/frontend/my-app/public/screenshot.jpg',
+        `/home/shhan/Workspace/superhan/selenium-lab/frontend/my-app/public/${title}.jpg`,
         croppedBuffer,
       );
     }
@@ -190,40 +202,65 @@ export class AutomationService {
     console.log(arr);
   }
 
+  async loginElsisRtom(rtomLoginDto: RtomLoginDto): Promise<string> {
+    const driver: WebDriver = await this.seleniumService.getDriver();
+
+    await driver.get(this.configService.get<string>('ELSIS_RTOM_URL'));
+
+    // 페이지가 로드될 때까지 기다립니다.
+    await driver.wait(
+      until.titleIs(
+        'Meshed Group Enterprise Education Management System -- Home Page',
+      ),
+      1000,
+    );
+
+    await driver.get(this.configService.get<string>('ELSIS_RTOM_URL'));
+
+    // 페이지가 로드될 때까지 기다립니다.
+    await driver.wait(
+      until.titleIs(
+        'Meshed Group Enterprise Education Management System -- Home Page',
+      ),
+      1000,
+    );
+    // login id input : ctl00_Main_txtUsername_ECAAll
+    const usernameInput = await driver.findElement(
+      By.id('ctl00_Main_txtUsername_ECAAll'),
+    );
+    // password input: ctl00_Main_txtPassword_ECAAll
+    const passwordInput = await driver.findElement(
+      By.id('ctl00_Main_txtPassword_ECAAll'),
+    );
+
+    await usernameInput.sendKeys(rtomLoginDto.username);
+    await passwordInput.sendKeys(rtomLoginDto.password);
+
+    // login button : ctl00_Main_btnLogin_ECAAll
+    const loginButton = await driver.findElement(
+      By.id('ctl00_Main_btnLogin_ECAAll'),
+    ); // Replace 'loginButtonId' with the actual ID of the login button
+    await loginButton.click();
+
+    return 'OK';
+  }
+
+  /**
+   * OOP_TIPS:
+   * According to LSP(Liskov substitution principle), the dto can be substitude ChangeProfileDto for RtomLoginDto.
+   * Bcause, ChangeProfileDto has already extended RtomLoginDto.
+   * @param changeProfileDto
+   */
+  async changeProfile(changeProfileDto: ChangeProfileDto) {
+    await this.loginElsisRtom(changeProfileDto);
+  }
+
   async executeDefer(executeDeferDto: ExecuteDeferDto): Promise<any> {
     const driver: WebDriver = await this.seleniumService.getDriver();
 
     try {
       // TODO: need to move this in configuration variable
       // 웹사이트로 이동합니다.
-      this.configService.get<string>('SELENIUM_WEB_URL');
-
-      await driver.get('https://elsis.rtomanager.com.au/');
-
-      // 페이지가 로드될 때까지 기다립니다.
-      await driver.wait(
-        until.titleIs(
-          'Meshed Group Enterprise Education Management System -- Home Page',
-        ),
-        1000,
-      );
-      // login id input : ctl00_Main_txtUsername_ECAAll
-      const usernameInput = await driver.findElement(
-        By.id('ctl00_Main_txtUsername_ECAAll'),
-      );
-      // password input: ctl00_Main_txtPassword_ECAAll
-      const passwordInput = await driver.findElement(
-        By.id('ctl00_Main_txtPassword_ECAAll'),
-      );
-
-      await usernameInput.sendKeys('mel.intern2');
-      await passwordInput.sendKeys('3Varosej');
-
-      // login button : ctl00_Main_btnLogin_ECAAll
-      const loginButton = await driver.findElement(
-        By.id('ctl00_Main_btnLogin_ECAAll'),
-      ); // Replace 'loginButtonId' with the actual ID of the login button
-      await loginButton.click();
 
       const firstTimeLoginPopupBtn = await driver.findElement(
         By.id('ctl00_Main_btnIMfine'),
@@ -368,7 +405,7 @@ export class AutomationService {
   private async whatsOnCropImage(imageBuffer) {
     const rect = {
       left: 610,
-      top: 150,
+      top: 148,
       width: 610,
       height: 660,
     };
