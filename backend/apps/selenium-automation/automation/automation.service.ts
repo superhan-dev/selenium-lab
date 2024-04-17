@@ -202,9 +202,10 @@ export class AutomationService {
     console.log(arr);
   }
 
-  async loginElsisRtom(rtomLoginDto: RtomLoginDto): Promise<string> {
-    const driver: WebDriver = await this.seleniumService.getDriver();
-
+  async loginElsisRtom(
+    driver: WebDriver,
+    rtomLoginDto: RtomLoginDto,
+  ): Promise<boolean> {
     await driver.get(this.configService.get<string>('ELSIS_RTOM_URL'));
 
     // 페이지가 로드될 때까지 기다립니다.
@@ -236,13 +237,30 @@ export class AutomationService {
     await usernameInput.sendKeys(rtomLoginDto.username);
     await passwordInput.sendKeys(rtomLoginDto.password);
 
-    // login button : ctl00_Main_btnLogin_ECAAll
-    const loginButton = await driver.findElement(
-      By.id('ctl00_Main_btnLogin_ECAAll'),
-    ); // Replace 'loginButtonId' with the actual ID of the login button
-    await loginButton.click();
+    await this.clickElementBy(driver, By.id('ctl00_Main_btnLogin_ECAAll'));
+    await this.clickElementBy(driver, By.id('ctl00_Main_btnIMfine'));
 
-    return 'OK';
+    return true;
+  }
+
+  async searchStudentProfile(
+    driver: WebDriver,
+    studentNumber: string,
+  ): Promise<void> {
+    await this.clickElementBy(driver, By.id('ctl00_lnkSS'));
+
+    const studentIdInput = await driver.findElement(
+      By.id('ctl00_Main_txtSearch'),
+    );
+
+    await studentIdInput.sendKeys(studentNumber);
+
+    await this.clickElementBy(driver, By.id('ctl00_Main_btnSearch'));
+    // viewProfileBtn click
+    await this.clickElementBy(
+      driver,
+      By.id('ctl00_Main_GridView1_ctl02_imgView'),
+    );
   }
 
   /**
@@ -251,8 +269,36 @@ export class AutomationService {
    * Bcause, ChangeProfileDto has already extended RtomLoginDto.
    * @param changeProfileDto
    */
-  async changeProfile(changeProfileDto: ChangeProfileDto) {
-    await this.loginElsisRtom(changeProfileDto);
+  async changeProfile(changeProfileDto: ChangeProfileDto): Promise<void> {
+    const driver: WebDriver = await this.seleniumService.getDriver();
+
+    await this.loginElsisRtom(driver, changeProfileDto);
+    await this.searchStudentProfile(driver, changeProfileDto.studentNumber);
+
+    await this.clickElementBy(driver, By.id('ctl00_Main_liViewEditProfile'));
+    await this.clickElementBy(driver, By.id('ctl00_Main_btnEditPersonal'));
+  }
+
+  async clickElementBy(driver: WebDriver, by: By): Promise<void> {
+    await driver.wait(until.elementLocated(by), 1000);
+    const element = await driver.findElement(by);
+    if (element) {
+      await element.click();
+    }
+  }
+
+  async sendKeysElementBy(
+    driver: WebDriver,
+    by: By,
+    value: any,
+  ): Promise<void> {
+    await driver.wait(until.elementLocated(by), 1000);
+    const element = await driver.findElement(by);
+    await element.sendKeys(value);
+  }
+
+  async getElementTextBy(driver: WebDriver, by: By): Promise<string> {
+    return await driver.findElement(by).getText();
   }
 
   async executeDefer(executeDeferDto: ExecuteDeferDto): Promise<any> {
@@ -261,47 +307,26 @@ export class AutomationService {
     try {
       // TODO: need to move this in configuration variable
       // 웹사이트로 이동합니다.
+      await this.loginElsisRtom(driver, {
+        username: 'mel.intern2',
+        password: '3Varosej',
+      });
+      // studentManu click
+      await this.clickElementBy(driver, By.id('ctl00_lnkSS'));
 
-      const firstTimeLoginPopupBtn = await driver.findElement(
-        By.id('ctl00_Main_btnIMfine'),
-      );
-      while (!firstTimeLoginPopupBtn) {
-        console.log('waitig rendering... firstTimeLoginPopupBtn...');
-      }
-
-      if (firstTimeLoginPopupBtn) {
-        await firstTimeLoginPopupBtn.click();
-      }
-
-      const studentManu = await driver.findElement(By.id('ctl00_lnkSS'));
-
-      while (!studentManu) {
-        console.log('waitig rendering... studentManu...');
-      }
-
-      if (studentManu) {
-        await studentManu.click();
-      }
-
-      const studentIdInput = await driver.findElement(
+      await this.sendKeysElementBy(
+        driver,
         By.id('ctl00_Main_txtSearch'),
+        executeDeferDto.studentNumber,
       );
 
-      await studentIdInput.sendKeys(executeDeferDto.studentNumber);
-
-      const searchBtn = await driver.findElement(By.id('ctl00_Main_btnSearch'));
-
-      if (searchBtn) {
-        await searchBtn.click();
-      }
-
-      const viewProfileBtn = await driver.findElement(
+      // searchBtn click
+      await this.clickElementBy(driver, By.id('ctl00_Main_btnSearch'));
+      // viewProfileBtn click
+      await this.clickElementBy(
+        driver,
         By.id('ctl00_Main_GridView1_ctl02_imgView'),
       );
-
-      if (viewProfileBtn) {
-        await viewProfileBtn.click();
-      }
 
       const updatePanel = await driver.findElement(
         By.id('ctl00_Main_UpdatePanel1'),
@@ -311,13 +336,15 @@ export class AutomationService {
         console.log('success to access the summary');
       }
 
-      const studyStartDate = await driver
-        .findElement(By.id('ctl00_Main_GridView2_ctl02_lblCstartDate'))
-        .getText();
+      const studyStartDate = await this.getElementTextBy(
+        driver,
+        By.id('ctl00_Main_GridView2_ctl02_lblCstartDate'),
+      );
 
-      const studyEndDate = await driver
-        .findElement(By.id('ctl00_Main_GridView2_ctl02_lblCfinishDate'))
-        .getText();
+      const studyEndDate = await this.getElementTextBy(
+        driver,
+        By.id('ctl00_Main_GridView2_ctl02_lblCfinishDate'),
+      );
 
       console.log(
         `studyStartDate : ${studyStartDate} \n studyEndDate : ${studyEndDate}`,
@@ -326,68 +353,60 @@ export class AutomationService {
 
       const newCourseEndDate: string = addNWeeks(studyEndDate, n);
 
-      const deferBtn = await driver.findElement(By.id('ctl00_Main_btnDefer'));
+      await this.clickElementBy(driver, By.id('ctl00_Main_btnDefer'));
 
-      if (deferBtn) {
-        deferBtn.click();
-      }
+      // typeSelectElement click
+      await this.clickElementBy(driver, By.id('ctl00_Main_lstType'));
 
-      const typeSelectElement = await driver.findElement(
-        By.id('ctl00_Main_lstType'),
-      );
-
-      typeSelectElement.click();
       // selected="selected" value="Approved Holiday"
       // Locate the option you want to select and click on it
-      const optionTypeSelect = await driver.findElement(
+      await this.clickElementBy(
+        driver,
         By.xpath("//option[text()='Approved Holiday']"),
-      ); // Replace 'Option Text' with the text of the option you want to select
-      await optionTypeSelect.click();
-
-      const reasonSelect = await driver.findElement(
-        By.id('ctl00_Main_dropReason'),
       );
 
-      reasonSelect.click();
+      await this.clickElementBy(driver, By.id('ctl00_Main_dropReason'));
 
-      const optionReasonSelect = await driver.findElement(
+      await this.clickElementBy(
+        driver,
         By.xpath("//option[text()='Personal Reason']"),
       );
-      optionReasonSelect.click();
 
-      const fromDateElement = await driver.findElement(
+      await this.sendKeysElementBy(
+        driver,
         By.id('ctl00_Main_txtFromDate'),
+        executeDeferDto.fromDate,
       );
-      const toDateElement = await driver.findElement(
+
+      await this.sendKeysElementBy(
+        driver,
         By.id('ctl00_Main_txtToDate'),
+        executeDeferDto.toDate,
       );
 
-      fromDateElement.sendKeys(executeDeferDto.fromDate);
-      toDateElement.sendKeys(executeDeferDto.toDate);
+      // approvalStatus click
+      await this.clickElementBy(driver, By.id('ctl00_Main_rbApproval_0'));
 
-      const approvalStatus = await driver.findElement(
-        By.id('ctl00_Main_rbApproval_0'),
-      );
+      // checkUpdateFinishDate click
+      await this.clickElementBy(driver, By.id('ctl00_Main_chkFinishDate'));
 
-      approvalStatus.click();
-
-      const checkUpdateFinishDate = await driver.findElement(
-        By.id('ctl00_Main_chkFinishDate'),
-      );
-
-      checkUpdateFinishDate.click();
-
-      const newFinishDateInput = await driver.findElement(
+      // const newFinishDateInput = await driver.findElement(
+      // By.id('ctl00_Main_gmFinishDate'),
+      // );
+      // newFinishDateInput.sendKeys(newCourseEndDate);
+      await this.sendKeysElementBy(
+        driver,
         By.id('ctl00_Main_gmFinishDate'),
-      );
-      newFinishDateInput.sendKeys(newCourseEndDate);
-
-      const commentsTextarea = await driver.findElement(
-        By.name('ctl00$Main$txtComments'),
+        newCourseEndDate,
       );
       const deferralCommentes = `student takes ${n} week break, ${n} weeks remaining. and the new finish date is ${newCourseEndDate}`;
 
-      commentsTextarea.sendKeys(deferralCommentes);
+      // commentsTextarea sendKeys
+      await this.sendKeysElementBy(
+        driver,
+        By.name('ctl00$Main$txtComments'),
+        deferralCommentes,
+      );
 
       // const deferCourseBtn = await driver.findElement(
       //   By.name('ctl00_Main_btnDefer'),

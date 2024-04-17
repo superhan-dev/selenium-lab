@@ -41,7 +41,7 @@ export class AutomationController {
     return await this.automationService.testGetTimeTable();
   }
 
-  @Post()
+  @Post('change/profile')
   async changeProfile(@Body() changeProfileDto: ChangeProfileDto) {
     return await this.automationService.changeProfile(changeProfileDto);
   }
